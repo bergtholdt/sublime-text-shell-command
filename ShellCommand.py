@@ -41,7 +41,6 @@ class ShellCommandCommand(SH.TextCommand):
         arg = None
         if region == 'arg':
             arg = self.get_region().strip()
-
             if arg == '':
                 if arg_required is True:
                     sublime.message_dialog('This command requires a parameter.')
@@ -50,8 +49,16 @@ class ShellCommandCommand(SH.TextCommand):
         # If regions should be used as input to the command then
         # pipe the current selection to the command as stdin:
         #
-        if region == 'stdin' and stdin is None:
+        elif region == 'stdin' and stdin is None:
             stdin = self.get_region(can_select_entire_buffer=True)
+        elif isinstance(region, str):
+            arg = '"' + '" "'.join([self.view.substr(reg) for reg in self.view.get_regions(region)]) + '"'
+            region = 'arg'
+
+            if arg == '':
+                if arg_required is True:
+                    sublime.message_dialog('This command requires a parameter.')
+                    return
 
         # Setup a closure to run the command:
         #
@@ -134,7 +141,6 @@ class ShellCommandCommand(SH.TextCommand):
     def run_shell_command(self, command=None, stdin=None, panel=False, target=None, title=None, syntax=None, refresh=False, console=None, working_dir=None, wait_for_completion=None, root_dir=False):
 
         view, window = self.get_view_and_window()
-
         settings = sublime.load_settings('ShellCommand.sublime-settings')
 
         if command is None:

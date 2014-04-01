@@ -31,6 +31,29 @@ def process(commands, callback=None, stdin=None, settings=None, working_dir=None
         thread.start()
 
 
+def _read_line(out):
+    if os.name == 'nt':
+        # this is windows specific problem, that you cannot tell if there are
+        # more bytes ready, so we read only 1 at a times
+
+        line = []
+        while True:
+            byte = out.read(1)
+            if byte == b'\r':
+                continue
+            elif byte:
+                line.append(byte)
+            else:
+                return byte
+            if byte == b'\n':
+                return b''.join(line)
+    else:
+        while True:
+            i, _, _ = select.select([out], [], [])
+            if i:
+                return out.readline()
+
+
 def _process(commands, callback=None, stdin=None, settings=None, working_dir=None, wait_for_completion=None, **kwargs):
     '''Process one or more OS commands.'''
 
@@ -115,7 +138,7 @@ def _process(commands, callback=None, stdin=None, settings=None, working_dir=Non
                     #
                     output = True
                     while output:
-                        output = proc.stdout.readline().decode().replace('\r\n', '\n')
+                        output = _read_line(proc.stdout).decode().replace('\r\n', '\n')
 
                         # If the caller wants everything in one go, or
                         # there is no callback function, then batch up

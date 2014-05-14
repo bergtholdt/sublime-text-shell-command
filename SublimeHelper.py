@@ -77,9 +77,9 @@ class TextCommand(sublime_plugin.TextCommand):
         '''Get the view's current working directory.'''
 
         view, window = self.get_view_and_window()
+        folders = []
 
         if view is not None:
-
             # This list will contain a set of directories that are candidates
             # for the working directory:
             #
@@ -95,6 +95,10 @@ class TextCommand(sublime_plugin.TextCommand):
                     if data is not None:
                         if 'working_dir' in data and data['working_dir'] is not None:
                             folders.append(data['working_dir'])
+
+            settings = view.settings()
+            if settings.has('working_dir'):
+                folders.append(settings.get('working_dir'))
 
             if window is not None:
 
@@ -112,7 +116,8 @@ class TextCommand(sublime_plugin.TextCommand):
                 folders.extend(window.folders())
 
             # If there is a file in the active view then use it to work out
-            # a working directory:
+            # a working directory using "folders" as a priority list and 
+            # looking for a common ancestor to the current view's file:
             #
             file_name = view.file_name()
             if file_name is not None:

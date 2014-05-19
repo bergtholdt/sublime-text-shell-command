@@ -2,6 +2,8 @@ import sublime
 
 from . import SublimeHelper as SH
 from . import OsShell
+import shelve
+from contextlib import closing
 
 
 class ShellCommandCommand(SH.TextCommand):
@@ -262,4 +264,53 @@ class ShellCommandRefreshCommand(ShellCommandCommand):
                 console.set_read_only(True)
 
                 self.run_shell_command(command=data['command'], console=console, working_dir=data['working_dir'])
+
+
+class ShellCommandWithHistoryCommand(ShellCommandCommand):
+    """A Shell Command Class with a persistent history"""
+    def __init__(self, *args, **kwargs):
+        super(ShellCommandWithHistoryCommand, self).__init__(*args, **kwargs)
+        self.shelve_file = sublime.packages_path() + '/User/ShellCommandHistory'
+
+    def run_shell_command(self, command=None, *args, **kwargs):
+        with closing(shelve.open(self.shelve_file)) as sf:
+            sf[command] = (args, kwargs)
+        super(ShellCommandWithHistoryCommand, self).run_shell_command(command, *args, **kwargs)
+
+
+class ShellCommandFromHistoryCommand(ShellCommandWithHistoryCommand):
+    """A Shell Command Class using a persistent history"""
+    # execute, delete
+    mode = 'execute'
+
+    def __init__(self, *args, **kwargs):
+        super(ShellCommandFromHistoryCommand, self).__init__(*args, **kwargs)
+        self.shelve_file = sublime.packages_path() + '/User/ShellCommandHistory'
+
+    def run(self, edit, command=None, mode='execute', **kwargs):
+        self.mode = mode
+        with closing(shelve.open(self.shelve_file)) as sf:
+            self.commands = list(sf.keys())
+        if command == None:
+            self.view.window().show_quick_panel(self.commands, self.on_done)
+        else:
+            self.on_done(self.commands.index(command))
+
+    def on_done(self, index):
+        if index >= 0:
+            command = self.commands[index]
+            if self.mode == 'execute':
+                with closing(shelve.open(self.shelve_file)) as sf:
+                    args, kwargs = sf[command]
+                self.run_shell_command(command, *args, **kwargs)
+            elif self.mode == 'delete':
+                with closing(shelve.open(self.shelve_file)) as sf:
+                    del sf[command]
+
+    def run_shell_command(self, command=None, *args, **kwargs):
+        import shelve
+        from contextlib import closing
+        with closing(shelve.open(self.shelve_file)) as sf:
+            sf[command] = (args, kwargs)
+        super(ShellCommandFromHistoryCommand, self).run_shell_command(command, *args, **kwargs)
 

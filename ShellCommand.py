@@ -274,7 +274,8 @@ class ShellCommandWithHistoryCommand(ShellCommandCommand):
 
     def run_shell_command(self, command=None, *args, **kwargs):
         with closing(shelve.open(self.shelve_file)) as sf:
-            sf[command] = (args, kwargs)
+            #print('shelve:', command, args, kwargs)
+            sf[command[0]] = (command, args, kwargs)
         super(ShellCommandWithHistoryCommand, self).run_shell_command(command, *args, **kwargs)
 
 
@@ -301,8 +302,8 @@ class ShellCommandFromHistoryCommand(ShellCommandWithHistoryCommand):
             command = self.commands[index]
             if self.mode == 'execute':
                 with closing(shelve.open(self.shelve_file)) as sf:
-                    args, kwargs = sf[command]
-                self.run_shell_command(command, *args, **kwargs)
+                    commands, args, kwargs = sf[command]
+                self.run_shell_command(commands, *args, **kwargs)
             elif self.mode == 'delete':
                 with closing(shelve.open(self.shelve_file)) as sf:
                     del sf[command]
@@ -311,6 +312,6 @@ class ShellCommandFromHistoryCommand(ShellCommandWithHistoryCommand):
         import shelve
         from contextlib import closing
         with closing(shelve.open(self.shelve_file)) as sf:
-            sf[command] = (args, kwargs)
+            sf[command[0]] = (command, args, kwargs)
         super(ShellCommandFromHistoryCommand, self).run_shell_command(command, *args, **kwargs)
 
